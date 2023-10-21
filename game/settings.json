@@ -1,0 +1,21 @@
+{
+    "screen": {
+        "width": 1280,
+        "height": 768,
+        "tileSize": 64,
+        "caption": "My Spooky Online Game"
+    },
+    "player": {
+        "width": 64,
+        "height": 76,
+        "speed": 8,
+        "gravity": 0.8,
+        "jumpSpeed": -20,
+        "jumpCooldown": 15,
+        "maxJumps": 1,
+        "animationSpeed": 0.15,
+        "shootCooldown": 28,
+        "slideCooldown": 20,
+        "slideTimer": 10
+    }
+}
