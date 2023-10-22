@@ -6,6 +6,7 @@
         "caption": "My Spooky Online Game"
     },
     "player": {
+        "imagesPath": "./game/graphics/player/",
         "width": 64,
         "height": 76,
         "speed": 8,
@@ -16,6 +17,14 @@
         "animationSpeed": 0.15,
         "shootCooldown": 28,
         "slideCooldown": 20,
-        "slideTimer": 10
+        "slideTimer": 15
+    },
+    "bullet": {
+        "imagesPath": "./game/graphics/bullet/",
+        "width": 32,
+        "height": 32,
+        "animationSpeed": 0.15,
+        "speed": 10,
+        "particleAnimationSpeed": 0.15
     }
 }

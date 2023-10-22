@@ -1,7 +1,7 @@
 import pygame
 from game.settings import Settings
 from game.player import Player
-from game.obstacle import Obstacle
+from game.sprites import Obstacle
 from game.maps.map0 import map0
 
 class Map:
@@ -10,6 +10,8 @@ class Map:
 		self.display_surface = pygame.display.get_surface()
 		self.player = pygame.sprite.GroupSingle()
 		self.obstacles = CameraGroup()
+		self.projectiles = SimpleGroup()
+		self.particles = SimpleGroup()
 
 		self.world_shift = 0
 		
@@ -18,13 +20,13 @@ class Map:
 	def _load(self):
 		tileSise = self.settings.screen['tileSize']
 
-		for i, row in enumerate(map0):
+		for i, _ in enumerate(map0):
 			for j, col in enumerate(map0[i]):
 				pos = (j*tileSise, i*tileSise)
 				if col == 'P':
-					self.player.add(Player(pos, self.settings))
+					self.player.add(Player(pos, self.settings, self.projectiles))
 				elif col == 'X':
-					obstacle = Obstacle(pos, (64, 64), self.obstacles)
+					Obstacle(pos, (64, 64), self.obstacles)
 
 	def run(self):
 		self.display_surface.fill('black')
@@ -32,10 +34,16 @@ class Map:
 		self.obstacles.update(self.world_shift)
 		self.obstacles.custom_draw(self, self.settings)
 
+		self.projectiles.update([self.player.sprite], self.obstacles, self.particles)
+		self.projectiles.draw(self.display_surface)
+
+		self.particles.update()
+		self.particles.draw(self.display_surface)
+
 		self.player.update(self.obstacles)
 		self.player.draw(self.display_surface)
 		
-class StaticGroup(pygame.sprite.Group):
+class SimpleGroup(pygame.sprite.Group):
 	def __init__(self):
 		super().__init__()
 

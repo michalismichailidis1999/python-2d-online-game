@@ -1,18 +1,19 @@
 import re
 import pygame
-from game.obstacle import Obstacle
 from game.settings import Settings
 from game.keyboard import Keyboard, ClassicKeyboard
+from game.sprites import Bullet
 from game.util import import_folder_images
 from game.constants import *
+from collections import deque
 
 class Player(pygame.sprite.Sprite):
-    def __init__(self, pos:(int, int), settings:Settings, keyboard:Keyboard = None):
+    def __init__(self, pos:(int, int), settings:Settings, projectiles_group:pygame.sprite.Group, keyboard:Keyboard = None):
         super().__init__()
 
-        self._load()
-
         self.settings = settings
+
+        self._load()
 
         self.direction = pygame.math.Vector2()
         self.speed = settings.player['speed']
@@ -21,9 +22,15 @@ class Player(pygame.sprite.Sprite):
 
         self.shooting = False
         self.can_shoot = True
+        self.bullets_fired = deque()
+        self.projectiles_group = projectiles_group
 
         self.is_sliding = False
         self.can_slide = False
+        self.slide_timer = settings.player['slideTimer']
+
+        self.is_running = False
+        self.running_time = 0
 
         self.jump_speed = settings.player['jumpSpeed']
         self.gravity = settings.player['gravity']
@@ -60,7 +67,7 @@ class Player(pygame.sprite.Sprite):
 
         self.animations = {}
 
-        player_path = './game/graphics/player/'
+        player_path = self.settings.player['imagesPath']
 
         for key in keys:
             if key in has_not_rotation:
@@ -74,25 +81,29 @@ class Player(pygame.sprite.Sprite):
     def _input(self):
         keys = pygame.key.get_pressed()
 
-        if keys[self.keyboard.up] and self.jumps < self.max_jumps and not self.shooting:
+        if keys[self.keyboard.up] and self.jumps < self.max_jumps and not self.shooting and not self.is_sliding:
             self._jump()
 
-        idleShooting = self.status == (('left_' if self.is_left else 'right_') +  SHOOT)
-
         if not self.is_sliding:
+            idleShooting = self.status == (('left_' if self.is_left else 'right_') +  SHOOT)
+
             if keys[self.keyboard.left] and not idleShooting:
                 self.direction.x = -1
                 self.is_left = True
+                self.is_running = True
             elif keys[self.keyboard.right] and not idleShooting:
                 self.direction.x = 1
                 self.is_left = False
+                self.is_running = True
             else:
                 self.direction.x = 0
+                self.is_running = False
+                self.running_time = 0
 
         if keys[self.keyboard.slide] and not self.shooting and self.on_ground and self.can_slide:
             self._slide()
 
-        if keys[self.keyboard.shoot] and self.on_ground and self.can_shoot:
+        if keys[self.keyboard.shoot] and self.on_ground and self.can_shoot and not self.is_sliding:
             self._shoot()
 
     def _apply_gravity(self):
@@ -104,6 +115,8 @@ class Player(pygame.sprite.Sprite):
         self.can_slide = False
         self.direction.x *= 1.2
         self.animation_cooldown = self.settings.player['slideCooldown']
+        self.running_time = 0
+        self.is_running = False
 
     def _jump(self):
         if self.jumps == 0:
@@ -134,7 +147,7 @@ class Player(pygame.sprite.Sprite):
                     self.direction.y = 0
                     self.on_ground = True
                     self.jumps = 0
-                    if not self.shooting:
+                    if not self.shooting and not self.is_sliding:
                         self.animation_cooldown = 0
                     break
                 elif self.direction.y < 0:
@@ -150,7 +163,7 @@ class Player(pygame.sprite.Sprite):
         self._apply_gravity()
         self._check_vertical_collision(objects)
 
-    def _update_cooldowns(self):
+    def _update_cooldowns_and_timers(self):
         if self.animation_cooldown >= 1:
             self.animation_cooldown -= 1
 
@@ -165,10 +178,29 @@ class Player(pygame.sprite.Sprite):
 
             self.animation_cooldown = 0
 
+        if self.is_running:
+            self.running_time += 1
+
+            if self.running_time >= self.slide_timer:
+                self.can_slide = True
+
     def _shoot(self):
         self.shooting = True
         self.can_shoot = False
         self.animation_cooldown = self.settings.player['shootCooldown']
+
+        if self.direction.x != 0:
+            self._instantiate_bullet()
+
+    def _instantiate_bullet(self):
+        extra_distance = (-30 if self.is_left else 10) if self.direction.x != 0 else (-30 if self.is_left else 0)
+
+        bullet_pos = (
+            (self.rect.left if self.is_left else self.rect.right) + extra_distance,
+            self.rect.centery - 10
+        )
+
+        self.bullets_fired.append(Bullet(bullet_pos, self.is_left, self.settings, self.projectiles_group))
 
     #endregion
 
@@ -212,8 +244,11 @@ class Player(pygame.sprite.Sprite):
             idx = 0 if self.direction.y <= 0 else 1
             self.frame_index = idx
         elif idx > total_frames - 1:
-            self.frame_index = 0 if not self.shooting else total_frames - 1
-            idx = 0 if not self.shooting else total_frames - 1
+            self.frame_index = 0 if not self.shooting and not self.is_sliding else total_frames - 1
+            idx = 0 if not self.shooting and not self.is_sliding else total_frames - 1
+
+            if self.shooting and self.frame_index == total_frames - 1 and self.direction.x == 0:
+                self._instantiate_bullet()
 
         try:
             img = self.animations[status][idx]
@@ -224,10 +259,13 @@ class Player(pygame.sprite.Sprite):
         self.status = status
     #endregion
 
+    def take_hit(self):
+        print("player took hit")
+
     def update(self, objects:pygame.sprite.Group):
         self._input()
 
-        self._update_cooldowns()
+        self._update_cooldowns_and_timers()
 
         self._animate()
 

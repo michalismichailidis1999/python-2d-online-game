@@ -6,3 +6,6 @@ RUN = 'run'
 RUN_AND_SHOOT = 'run-shoot'
 SHOOT = 'shoot'
 SLIDE = 'slide'
+
+BULLET_INSTANTIATE = 'instantiate'
+BULLET_COLLIDED = 'collision'
