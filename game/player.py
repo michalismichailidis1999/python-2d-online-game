@@ -15,6 +15,9 @@ class Player(pygame.sprite.Sprite):
 
         self._load()
 
+        self.health = 100
+        self.is_taking_damage = False
+
         self.direction = pygame.math.Vector2()
         self.speed = settings.player['speed']
 
@@ -79,6 +82,8 @@ class Player(pygame.sprite.Sprite):
     #region Movement
 
     def _input(self):
+        if self.is_taking_damage: return
+
         keys = pygame.key.get_pressed()
 
         if keys[self.keyboard.up] and self.jumps < self.max_jumps and not self.shooting and not self.is_sliding:
@@ -175,6 +180,9 @@ class Player(pygame.sprite.Sprite):
             elif self.is_sliding:
                 self.is_sliding = False
                 self.frame_index = 0
+            elif self.is_taking_damage:
+                self.is_taking_damage = False
+                self.frame_index = 0
 
             self.animation_cooldown = 0
 
@@ -209,7 +217,9 @@ class Player(pygame.sprite.Sprite):
     def _get_status(self) -> str:
         status = IDLE
 
-        if not self.on_ground:
+        if self.is_taking_damage:
+            status = HURT
+        elif not self.on_ground:
             status = JUMP
         elif self.is_sliding:
             status = SLIDE
@@ -259,8 +269,19 @@ class Player(pygame.sprite.Sprite):
         self.status = status
     #endregion
 
-    def take_hit(self):
-        print("player took hit")
+    def take_hit(self, damage:float, force:(float, float)):
+        self.health -= damage
+
+        if self.health <= 0: self.kill()
+
+        self.is_taking_damage = True
+        self.direction.x = force[0]
+        self.direction.y = force[1]
+        self.is_running = False
+        self.running_time = 0
+        self.shooting = False
+        self.can_slide = False
+        self.animation_cooldown = self.settings.player['damageCooldown']
 
     def update(self, objects:pygame.sprite.Group):
         self._input()
@@ -271,4 +292,7 @@ class Player(pygame.sprite.Sprite):
 
         self._apply_horizontal_movement(objects)
         self._apply_vertical_movement(objects)
+
+        if self.is_taking_damage:
+            self.direction.x -= self.direction.x * 0.1
         

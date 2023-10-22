@@ -17,7 +17,8 @@
         "animationSpeed": 0.15,
         "shootCooldown": 28,
         "slideCooldown": 20,
-        "slideTimer": 15
+        "slideTimer": 15,
+        "damageCooldown": 25
     },
     "bullet": {
         "imagesPath": "./game/graphics/bullet/",
